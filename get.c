@@ -50,6 +50,11 @@ int *allocate_intmem (int);
 int
 main (int argc, char **argv)
 {
+  if (argc != 3) {
+        printf("Usage: ./get src_ip dst_ip");
+        return;
+  }
+
   int i, status, sd, *ip_flags, *tcp_flags;
   const int on = 1;
   char *interface, *src_ip, *dst_ip;
@@ -74,11 +79,6 @@ main (int argc, char **argv)
   url = allocate_strmem (40);
   directory = allocate_strmem (80);
   filename = allocate_strmem (80);
-
-  if (argv != 3) {
-	printf("Usage: ./get src_ip dst_ip");
-	return;
-  }
 
   // Set TCP data.
   strcpy (url, "www.google.com");  // Could be URL or IPv4 address
