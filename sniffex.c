@@ -179,8 +179,9 @@ return;
  *  */
 
 
-void decode_request(const char *payload, int len)
+int decode_request(const char *payload, int len)
 {
+	int http = 0;
 	printf("\nHyperText Transfer Protocol:\n");
 	char buffer[strlen(payload)];
 
@@ -192,6 +193,7 @@ void decode_request(const char *payload, int len)
         {
                 *next = '\0';
                 if(!strncasecmp(start, "GET", 3)) {
+			http = 1;
                         char* protocol = strstr(start + 4, " ");
                         *protocol = '\0';
                         printf("        Url: %s\n", start + 4);
@@ -213,6 +215,7 @@ void decode_request(const char *payload, int len)
 
                 }
         }
+	return http;
 }
 
 
@@ -347,16 +350,29 @@ got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
 
 	/* define/compute tcp payload (segment) offset */
 	payload = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
-	
+ 		
 	/* compute tcp payload (segment) size */
 	size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
 	
+	long nextack = ntohl(tcp->th_seq) + size_payload;
+	if (tcp->th_flags >> 1 & 1) {
+		nextack = nextack + 1;
+	}
+	printf("Next sequence Number: %llu\n", ntohl(tcp->th_ack));
+        printf("Next acknowledgment Number: %llu\n", nextack);
+
+	printf("++++>>: %s ", inet_ntoa(ip->ip_dst));
+	printf("%s ", inet_ntoa(ip->ip_src));
+	printf("%llu %llu %d %d\n", ntohl(tcp->th_ack), nextack, ntohs(tcp->th_dport), ntohs(tcp->th_sport));
+
+    	printf("Payload size: %d\n", size_payload);	
 	/*
  * 	 * Print payload data; it might be binary, so don't just
  * 	 	 * treat it as a string.
  * 	 	 	 */
 	if (size_payload > 0) {
-		decode_request(payload, size_payload);
+		int http = decode_request(payload, size_payload);
+
 		printf("\nPayload (%d bytes):\n", size_payload);
 		print_payload(payload, size_payload);
 	}
@@ -375,7 +391,7 @@ int main(int argc, char **argv)
 	struct bpf_program fp;			/* compiled filter program (expression) */
 	bpf_u_int32 mask;			/* subnet mask */
 	bpf_u_int32 net;			/* ip */
-	int num_packets = 10;			/* number of packets to capture */
+	int num_packets = 10000;			/* number of packets to capture */
 
 	print_app_banner();
 	if (argc != 3) {
